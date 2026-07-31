@@ -45,4 +45,4 @@ It'll then sit on your home screen like any other app icon.
 
 ## Something not working?
 
-Contact *[your name / team contact]*.
+Contact *James Cullen*.
