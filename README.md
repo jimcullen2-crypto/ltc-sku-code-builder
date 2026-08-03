@@ -4,7 +4,7 @@ This tool builds product SKU codes using only our agreed options — material, l
 
 ## Opening it
 
-**Click this link:** *[paste your GitHub Pages link here, e.g. https://your-username.github.io/sku-code-builder/]*
+**Click this link:** *(https://jimcullen2-crypto.github.io/ltc-sku-code-builder/)*
 
 It opens straight in your browser — no login, no download, no app to install. Works on a phone, tablet, or computer.
 
