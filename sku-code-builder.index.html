@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SKU code builder</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#1c1c1a;
+    --ink-soft:#5f5e5a;
+    --ink-faint:#8a8983;
+    --line:#e2e0d8;
+    --paper:#ffffff;
+    --panel:#faf9f5;
+    --accent:#7f5a3a;
+    --accent-soft:#f3ece2;
+    --danger:#a32d2d;
+    --success:#3b6d11;
+    --success-soft:#eaf3de;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:#f4f2ec;
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{
+    max-width:840px;
+    margin:0 auto;
+    padding:48px 24px 80px;
+  }
+  header{
+    margin-bottom:32px;
+  }
+  .header-inner{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    margin-bottom:14px;
+  }
+  .header-inner img{
+    width:48px;
+    height:48px;
+    flex-shrink:0;
+  }
+  header p.eyebrow{
+    font-size:12px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--accent);
+    font-weight:600;
+    margin:0 0 8px;
+  }
+  header h1{
+    font-size:26px;
+    font-weight:600;
+    margin:0 0 8px;
+    letter-spacing:-0.01em;
+  }
+  header p.sub{
+    font-size:14px;
+    color:var(--ink-soft);
+    margin:0;
+    max-width:560px;
+    line-height:1.5;
+  }
+  .card{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:28px;
+    margin-bottom:24px;
+  }
+  .card h2{
+    font-size:15px;
+    font-weight:600;
+    margin:0 0 18px;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    margin-bottom:20px;
+  }
+  @media (max-width:560px){
+    .grid{grid-template-columns:1fr;}
+  }
+  .field label{
+    display:block;
+    font-size:12px;
+    font-weight:600;
+    color:var(--ink-soft);
+    margin-bottom:6px;
+  }
+  .field label .req{
+    color:var(--danger);
+  }
+  select, input[type="text"]{
+    width:100%;
+    height:42px;
+    padding:0 12px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background-color:var(--paper);
+    font-size:14px;
+    color:var(--ink);
+    font-family:inherit;
+    transition:border-color .15s ease;
+  }
+  select{
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%235f5e5a" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>');
+    background-repeat:no-repeat;
+    background-position:right 12px center;
+    appearance:none;
+    -webkit-appearance:none;
+    cursor:pointer;
+  }
+  select:focus, input[type="text"]:focus{
+    outline:none;
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-soft);
+  }
+  select:disabled{
+    background-color:var(--panel);
+    color:var(--ink-faint);
+    cursor:not-allowed;
+  }
+  .hint{
+    font-size:12px;
+    color:var(--ink-faint);
+    min-height:16px;
+    margin:0 0 20px;
+  }
+  .result{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:20px 22px;
+    margin-bottom:14px;
+  }
+  .result p.label{
+    font-size:12px;
+    font-weight:600;
+    color:var(--ink-soft);
+    margin:0 0 8px;
+  }
+  .result p.code{
+    font-family:"SF Mono",Consolas,Menlo,monospace;
+    font-size:24px;
+    font-weight:600;
+    letter-spacing:0.5px;
+    margin:0;
+    word-break:break-all;
+  }
+  .code.empty{
+    color:var(--ink-faint);
+    font-weight:400;
+  }
+  .footer-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .len{
+    font-size:12px;
+    color:var(--ink-faint);
+  }
+  .len.over{
+    color:var(--danger);
+  }
+  .actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  button{
+    font-family:inherit;
+    font-size:13px;
+    font-weight:600;
+    padding:9px 16px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    color:var(--ink);
+    cursor:pointer;
+    transition:background .15s ease, border-color .15s ease;
+    white-space:nowrap;
+  }
+  button:hover{
+    background:var(--panel);
+    border-color:var(--ink-faint);
+  }
+  button.primary{
+    background:var(--ink);
+    color:#fff;
+    border-color:var(--ink);
+  }
+  button.primary:hover{
+    background:#000;
+  }
+  button:disabled{
+    opacity:0.4;
+    cursor:not-allowed;
+  }
+  button.primary:disabled:hover{
+    background:var(--ink);
+  }
+  .desc-field{
+    margin-bottom:20px;
+  }
+  .add-row{
+    display:flex;
+    justify-content:flex-end;
+    margin-bottom:4px;
+  }
+  .msg{
+    font-size:12px;
+    margin:8px 0 0;
+    min-height:16px;
+  }
+  .msg.error{ color:var(--danger); }
+  .msg.success{ color:var(--success); }
+
+  .list-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:16px;
+  }
+  .list-head h2{
+    margin:0;
+  }
+  .count-pill{
+    font-size:12px;
+    font-weight:600;
+    background:var(--accent-soft);
+    color:var(--accent);
+    padding:3px 10px;
+    border-radius:20px;
+  }
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+  }
+  thead th{
+    text-align:left;
+    font-size:11px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    color:var(--ink-faint);
+    padding:0 10px 8px;
+    border-bottom:1px solid var(--line);
+  }
+  tbody td{
+    padding:10px;
+    border-bottom:1px solid var(--line);
+    vertical-align:top;
+  }
+  tbody tr:last-child td{
+    border-bottom:none;
+  }
+  td.sku-cell{
+    font-family:"SF Mono",Consolas,Menlo,monospace;
+    font-weight:600;
+    white-space:nowrap;
+  }
+  td.date-cell{
+    color:var(--ink-faint);
+    white-space:nowrap;
+    font-size:12px;
+  }
+  td.remove-cell{
+    text-align:right;
+  }
+  .remove-btn{
+    border:none;
+    background:none;
+    color:var(--ink-faint);
+    font-size:16px;
+    line-height:1;
+    padding:4px 8px;
+    cursor:pointer;
+    border-radius:6px;
+  }
+  .remove-btn:hover{
+    background:var(--panel);
+    color:var(--danger);
+  }
+  .empty-state{
+    text-align:center;
+    color:var(--ink-faint);
+    font-size:13px;
+    padding:32px 0;
+  }
+  .export-row{
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+    margin-top:20px;
+    flex-wrap:wrap;
+  }
+  .email-note{
+    font-size:11px;
+    color:var(--ink-faint);
+    text-align:right;
+    margin-top:6px;
+  }
+  .help-toggle{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:13px;
+    font-weight:600;
+    color:var(--accent);
+    background:none;
+    border:none;
+    padding:0;
+    cursor:pointer;
+    margin-top:4px;
+  }
+  .help-toggle:hover{
+    background:none;
+    text-decoration:underline;
+  }
+  .help-chevron{
+    transition:transform .15s ease;
+    display:inline-block;
+  }
+  .help-chevron.open{
+    transform:rotate(180deg);
+  }
+  .help-panel{
+    display:none;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:18px 20px;
+    margin-top:14px;
+    font-size:13px;
+    line-height:1.6;
+    color:var(--ink-soft);
+  }
+  .help-panel.open{
+    display:block;
+  }
+  .help-panel h3{
+    font-size:13px;
+    font-weight:600;
+    color:var(--ink);
+    margin:0 0 6px;
+  }
+  .help-panel h3:not(:first-child){
+    margin-top:16px;
+  }
+  .help-panel ol, .help-panel ul{
+    margin:0;
+    padding-left:18px;
+  }
+  .help-panel li{
+    margin-bottom:4px;
+  }
+  .help-panel .two-col{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+  }
+  @media (max-width:560px){
+    .help-panel .two-col{grid-template-columns:1fr;}
+  }
+  footer.pagefoot{
+    margin-top:24px;
+    font-size:12px;
+    color:var(--ink-faint);
+    text-align:center;
+  }
+
+    margin-top:24px;
+    font-size:12px;
+    color:var(--ink-faint);
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="header-inner">
+      <img src="data:image/png;base64,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" alt="Licensed to Charm logo">
+      <div>
+        <p class="eyebrow">Licensed to Charm</p>
+        <h1>SKU code builder</h1>
+      </div>
+    </div>
+    <p class="sub">Build product codes from the agreed elements only. Every option below comes from the approved SKU structure — nothing outside this list can be entered.</p>
+    <button class="help-toggle" id="btn-help" aria-expanded="false" aria-controls="help-panel">
+      How to use this <span class="help-chevron" id="help-chevron">&#9662;</span>
+    </button>
+    <div class="help-panel" id="help-panel">
+      <h3>Building a SKU</h3>
+      <ol>
+        <li>Fill in each dropdown left to right — Material, Coating, License, Character/design, Product type, Size/format.</li>
+        <li>Character/design only appears once you've picked a License, and only shows that license's own options.</li>
+        <li>Add a product description, then click <strong>Add to list</strong>. It only lights up once the required fields (marked *) are filled in.</li>
+        <li>Repeat for every SKU you need — they all build up in the table below.</li>
+      </ol>
+      <h3>Getting your list out</h3>
+      <ul>
+        <li><strong>Export CSV / Export Excel</strong> — downloads a spreadsheet of everything added, straight to Downloads.</li>
+        <li><strong>Email export</strong> — opens your email app with the list in the body. For a real spreadsheet attachment, download the Excel file and attach it yourself.</li>
+        <li>Your list only lasts for this browser tab — closing it clears the list, so export before you go.</li>
+      </ul>
+      <h3>Add to your home screen</h3>
+      <div class="two-col">
+        <div><strong>iPhone / iPad:</strong> open in Safari &rarr; Share icon &rarr; Add to Home Screen.</div>
+        <div><strong>Android:</strong> open in Chrome &rarr; &#8942; menu &rarr; Add to Home screen.</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="card">
+    <div class="grid">
+      <div class="field">
+        <label>Material <span class="req">*</span></label>
+        <select id="f-material"></select>
+      </div>
+      <div class="field">
+        <label>Coating</label>
+        <select id="f-coating"></select>
+      </div>
+      <div class="field">
+        <label>License <span class="req">*</span></label>
+        <select id="f-license"></select>
+      </div>
+      <div class="field">
+        <label>Character / design <span class="req">*</span></label>
+        <select id="f-character"></select>
+      </div>
+      <div class="field">
+        <label>Product type <span class="req">*</span></label>
+        <select id="f-type"></select>
+      </div>
+      <div class="field">
+        <label>Size / format</label>
+        <select id="f-size"></select>
+      </div>
+    </div>
+
+    <p class="hint" id="hint"></p>
+
+    <div class="desc-field">
+      <label for="f-desc" style="display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:6px;">Product description</label>
+      <input type="text" id="f-desc" placeholder="e.g. Moomintroll charm bracelet, sterling silver">
+    </div>
+
+    <div class="result">
+      <p class="label">SKU code</p>
+      <p class="code empty" id="sku-out">—</p>
+    </div>
+
+    <div class="footer-row">
+      <p class="len" id="len-out"></p>
+      <div class="actions">
+        <button id="btn-reset">Reset</button>
+        <button id="btn-copy">Copy code</button>
+        <button class="primary" id="btn-add">Add to list</button>
+      </div>
+    </div>
+    <p class="msg" id="add-msg"></p>
+  </div>
+
+  <div class="card">
+    <div class="list-head">
+      <h2>SKUs added this session</h2>
+      <span class="count-pill" id="count-pill">0</span>
+    </div>
+
+    <div id="table-wrap">
+      <div class="empty-state" id="empty-state">No SKUs added yet. Build one above and select "Add to list".</div>
+      <table id="sku-table" style="display:none;">
+        <thead>
+          <tr>
+            <th>Date created</th>
+            <th>SKU code</th>
+            <th>Description</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+
+    <div class="export-row">
+      <button id="btn-export-csv">Export CSV</button>
+      <button id="btn-export-xlsx">Export Excel</button>
+      <button id="btn-export-email">Email export</button>
+    </div>
+    <p class="email-note">Email export opens your email client with the list in the body. For a spreadsheet attachment, download the Excel file above and attach it manually.</p>
+  </div>
+
+  <footer class="pagefoot">Reflects the agreed SKU structure. Update this file if the structure changes.</footer>
+</div>
+
+<script>
+const DATA = {
+  material: [
+    ['SS','Sterling silver'],
+    ['GV','Gold vermeil'],
+    ['BRO','Bronze'],
+    ['BRA','Brass'],
+    ['STS','Stainless steel']
+  ],
+  coating: [
+    ['SP','Silver plate'],
+    ['GP','Gold plate']
+  ],
+  license: [
+    ['LAB','Labyrinth'],
+    ['MIF','Miffy'],
+    ['PAD','Paddington'],
+    ['MO','Moomins'],
+    ['FK','Frida Kahlo'],
+    ['WG','Wallace and Gromit'],
+    ['PO','Phantom'],
+    ['SE','Starlight'],
+    ['CAT','Cats'],
+    ['JCS','Jesus Christ Superstar'],
+    ['DC','Dark Crystal'],
+    ['LTC','Licensed to Charm']
+  ],
+  characterByLicense: {
+    LAB:[['KNR','Right doorknocker'],['KNL','Left doorknocker'],['LUD','Ludo'],['BK','Book'],['CRB','Crystal ball'],['WOR','Worm'],['HOG','Hoggle']],
+    MIF:[['HEA','Head'],['DAI','Daisy'],['FLO','Flower'],['WIN','Winter'],['MOO','Moon'],['BOD','Body'],['RAB','Rabbit']],
+    PAD:[['HEA','Head'],['PAW','Paw'],['JAR','Jar'],['SQP','Square pendant'],['SCM','Suitcase and Marmalade'],['LTG','Luggage tag']],
+    MO:[['CRE','Crest'],['SBT','Sailing boat'],['SHT',"Snufkin's hat"],['MTH',"Moomin Papa's top hat"],['AB','Anchor Bob'],['UMB','Nibling umbrella'],['HFC','Hattifatteners in a cup'],['MT','Moomintroll'],['SM','Snorkmaiden'],['LMK','Little My in kettle']],
+    FK:[['SSK','Sugar skull'],['SK','Skull'],['ASK','Aztec skull'],['HND','Pointing hand'],['VLH','Viva la vida heart'],['THO','Thorn'],['MAR','Marigold'],['CRE','Creole'],['BIR','Bird'],['BUT','Butterfly']],
+    WG:[['WL','Wallace'],['WLST','Standing Wallace'],['WLP','Wallace in a plane'],['GR','Gromit'],['GRST','Standing Gromit'],['FE','Feathers'],['FEST','Standing Feathers'],['FEWT','Feathers, Wrong Trousers'],['SH','Shaun the Sheep'],['SHST','Standing Shaun'],['SHJ','Shaun in a jumper']],
+    PO:[['MAS','Mask'],['KEY','Christine key']],
+    SE:[['RS','Rollerskate']],
+    CAT:[['NP','Number plate'],['RT','Rumtugger']],
+    JCS:[['ANG','Angel wings']],
+    DC:[['JEN','Jen'],['MAN','Mandala'],['TRI','Triangle'],['PEB','Pebble'],['SKE','Skeksis']],
+    LTC:[['BEL','Belcher'],['PAP','Paper clip'],['TRA','Trace']]
+  },
+  type: [
+    ['ERD','Earrings - drop'],
+    ['ERS','Earrings - stud'],
+    ['ERH','Earrings - hoop'],
+    ['CHC','Charm - clip on'],
+    ['CHJ','Charm - jump ring'],
+    ['NK','Necklace'],
+    ['NKL','Lariat necklace'],
+    ['BCL','Bracelet'],
+    ['RG','Ring'],
+    ['RGS','Signet ring'],
+    ['KEY','Key ring'],
+    ['BAG','Bag charm']
+  ],
+  size: [
+    ['SML','Small'],
+    ['MED','Medium'],
+    ['LGE','Large'],
+    ['SIN','Single (charm bracelet)'],
+    ['DBL','Double (charm bracelet)'],
+    ['TRI','Triple (charm bracelet)'],
+    ['TQ','Turquoise stone'],
+    ['CA','Carnelian stone'],
+    ['RQ','Quartz stone'],
+    ['BD1','1 x colour bead'],
+    ['BD2','2 x colour bead'],
+    ['BD4','4 x colour bead'],
+    ['7.5','Chain length'],
+    ['5','Chain length'],
+    ['CRD','Cord'],
+    ['VRB','Velvet ribbon'],
+    ['SRB','Silk ribbon'],
+    ['LEA','Leather cord'],
+    ['SNK','Snake chain']
+  ]
+};
+
+let sessionList = [];
+
+function fillSelect(id, items, placeholder){
+  const el = document.getElementById(id);
+  el.innerHTML = '';
+  const ph = document.createElement('option');
+  ph.value = '';
+  ph.textContent = placeholder;
+  el.appendChild(ph);
+  items.forEach(([code, desc])=>{
+    const o = document.createElement('option');
+    o.value = code;
+    o.textContent = code + ' — ' + desc;
+    el.appendChild(o);
+  });
+}
+
+const elMaterial = document.getElementById('f-material');
+const elCoating = document.getElementById('f-coating');
+const elLicense = document.getElementById('f-license');
+const elCharacter = document.getElementById('f-character');
+const elType = document.getElementById('f-type');
+const elSize = document.getElementById('f-size');
+const elDesc = document.getElementById('f-desc');
+const elHint = document.getElementById('hint');
+const elSkuOut = document.getElementById('sku-out');
+const elLenOut = document.getElementById('len-out');
+const elAddMsg = document.getElementById('add-msg');
+const elCountPill = document.getElementById('count-pill');
+const elEmptyState = document.getElementById('empty-state');
+const elTable = document.getElementById('sku-table');
+const elTableBody = document.getElementById('table-body');
+const elBtnAdd = document.getElementById('btn-add');
+
+fillSelect('f-material', DATA.material, 'Select material');
+fillSelect('f-coating', DATA.coating, 'None');
+fillSelect('f-license', DATA.license, 'Select license');
+fillSelect('f-character', [], 'Select license first');
+fillSelect('f-type', DATA.type, 'Select product type');
+fillSelect('f-size', DATA.size, 'None');
+
+function updateCoatingAvailability(){
+  const mat = elMaterial.value;
+  const restricted = (mat === 'SS' || mat === 'GV');
+  elCoating.disabled = restricted || !mat;
+  if(restricted){ elCoating.value = ''; }
+}
+
+function updateCharacterOptions(){
+  const lic = elLicense.value;
+  const list = DATA.characterByLicense[lic] || [];
+  fillSelect('f-character', list, lic ? 'Select character / design' : 'Select license first');
+  elCharacter.disabled = !lic;
+}
+
+function updateHint(){
+  const mat = elMaterial.value;
+  if(mat === 'SS' || mat === 'GV'){
+    elHint.textContent = 'Coating does not apply to sterling silver or gold vermeil.';
+  } else if(mat){
+    elHint.textContent = 'Coating: only silver plate and gold plate are used on this material.';
+  } else {
+    elHint.textContent = '';
+  }
+}
+
+function currentSku(){
+  const parts = [
+    elMaterial.value,
+    elCoating.disabled ? '' : elCoating.value,
+    elLicense.value,
+    elCharacter.value,
+    elType.value,
+    elSize.value
+  ].filter(Boolean);
+  return parts.join('-');
+}
+
+function buildSku(){
+  const sku = currentSku();
+  const required = [elMaterial.value, elLicense.value, elCharacter.value, elType.value];
+  const complete = required.every(Boolean);
+
+  elSkuOut.textContent = sku || '—';
+  elSkuOut.classList.toggle('empty', !complete);
+
+  const len = sku.replace(/-/g,'').length;
+  elLenOut.textContent = sku ? (len + ' characters (excl. separators), guideline max 16') : '';
+  elLenOut.classList.toggle('over', len > 16);
+
+  elBtnAdd.disabled = !complete;
+  elAddMsg.textContent = '';
+  elAddMsg.className = 'msg';
+}
+
+function formatDate(d){
+  const pad = n => String(n).padStart(2,'0');
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
+function renderTable(){
+  elCountPill.textContent = sessionList.length;
+  if(sessionList.length === 0){
+    elEmptyState.style.display = 'block';
+    elTable.style.display = 'none';
+    return;
+  }
+  elEmptyState.style.display = 'none';
+  elTable.style.display = 'table';
+  elTableBody.innerHTML = '';
+  sessionList.forEach((row, idx)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td class="date-cell">' + row.date + '</td>' +
+      '<td class="sku-cell">' + row.sku + '</td>' +
+      '<td>' + (row.description ? escapeHtml(row.description) : '') + '</td>' +
+      '<td class="remove-cell"><button class="remove-btn" data-idx="' + idx + '" title="Remove">&times;</button></td>';
+    elTableBody.appendChild(tr);
+  });
+  elTableBody.querySelectorAll('.remove-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      sessionList.splice(Number(btn.dataset.idx), 1);
+      renderTable();
+    });
+  });
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+[elMaterial, elCoating, elLicense, elCharacter, elType, elSize].forEach(el=>{
+  el.addEventListener('change', ()=>{
+    if(el === elMaterial){ updateCoatingAvailability(); updateHint(); }
+    if(el === elLicense){ updateCharacterOptions(); }
+    buildSku();
+  });
+});
+
+document.getElementById('btn-reset').addEventListener('click', ()=>{
+  [elMaterial, elCoating, elLicense, elType, elSize].forEach(el=>el.value='');
+  elDesc.value = '';
+  updateCoatingAvailability();
+  updateCharacterOptions();
+  updateHint();
+  buildSku();
+});
+
+document.getElementById('btn-copy').addEventListener('click', ()=>{
+  const text = elSkuOut.textContent;
+  const btn = document.getElementById('btn-copy');
+  if(text && text !== '—'){
+    navigator.clipboard.writeText(text).then(()=>{
+      const original = btn.textContent;
+      btn.textContent = 'Copied';
+      setTimeout(()=>{ btn.textContent = original; }, 1500);
+    });
+  }
+});
+
+elBtnAdd.addEventListener('click', ()=>{
+  const sku = currentSku();
+  if(!sku) return;
+  if(sessionList.some(r => r.sku === sku)){
+    elAddMsg.textContent = 'That SKU is already in the list.';
+    elAddMsg.className = 'msg error';
+    return;
+  }
+  sessionList.push({
+    date: formatDate(new Date()),
+    sku: sku,
+    description: elDesc.value.trim(),
+    material: elMaterial.value,
+    coating: elCoating.disabled ? '' : elCoating.value,
+    license: elLicense.value,
+    character: elCharacter.value,
+    type: elType.value,
+    size: elSize.value
+  });
+  renderTable();
+  elAddMsg.textContent = 'Added to list.';
+  elAddMsg.className = 'msg success';
+  elDesc.value = '';
+});
+
+function toCsv(){
+  const headers = ['Date created','SKU code','Description','Material','Coating','License','Character/Design','Product type','Size/Format'];
+  const rows = sessionList.map(r => [r.date, r.sku, r.description, r.material, r.coating, r.license, r.character, r.type, r.size]);
+  const escapeCsv = v => {
+    const s = String(v ?? '');
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+  };
+  return [headers, ...rows].map(row => row.map(escapeCsv).join(',')).join('\r\n');
+}
+
+function downloadBlob(content, filename, mime){
+  const blob = new Blob([content], {type: mime});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function dateStamp(){
+  const d = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+}
+
+document.getElementById('btn-export-csv').addEventListener('click', ()=>{
+  if(sessionList.length === 0) return;
+  downloadBlob(toCsv(), 'sku-export-' + dateStamp() + '.csv', 'text/csv;charset=utf-8;');
+});
+
+document.getElementById('btn-export-xlsx').addEventListener('click', ()=>{
+  if(sessionList.length === 0) return;
+  const headers = ['Date created','SKU code','Description','Material','Coating','License','Character/Design','Product type','Size/Format'];
+  const rows = sessionList.map(r => [r.date, r.sku, r.description, r.material, r.coating, r.license, r.character, r.type, r.size]);
+  const wsData = [headers, ...rows];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [{wch:16},{wch:22},{wch:32},{wch:10},{wch:10},{wch:10},{wch:16},{wch:14},{wch:14}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'SKUs');
+  XLSX.writeFile(wb, 'sku-export-' + dateStamp() + '.xlsx');
+});
+
+document.getElementById('btn-export-email').addEventListener('click', ()=>{
+  if(sessionList.length === 0) return;
+  const lines = sessionList.map(r => r.sku + ' | ' + (r.description || '') + ' | added ' + r.date);
+  const body = 'SKU export (' + dateStamp() + ')%0D%0A%0D%0A' + lines.map(l => encodeURIComponent(l)).join('%0D%0A');
+  const subject = encodeURIComponent('SKU export - ' + dateStamp());
+  window.location.href = 'mailto:?subject=' + subject + '&body=' + body;
+});
+
+document.getElementById('btn-help').addEventListener('click', ()=>{
+  const panel = document.getElementById('help-panel');
+  const chevron = document.getElementById('help-chevron');
+  const btn = document.getElementById('btn-help');
+  const isOpen = panel.classList.toggle('open');
+  chevron.classList.toggle('open', isOpen);
+  btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+});
+
+updateCoatingAvailability();
+buildSku();
+renderTable();
+</script>
+</body>
+</html>
